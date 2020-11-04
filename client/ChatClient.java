@@ -26,6 +26,8 @@ public class ChatClient extends AbstractClient
    * the display method in the client.
    */
   ChatIF clientUI; 
+  
+  String _loginID = "";
 
   
   //Constructors ****************************************************
@@ -66,16 +68,59 @@ public class ChatClient extends AbstractClient
    */
   public void handleMessageFromClientUI(String message)
   {
-    try
-    {
-      sendToServer(message);
-    }
-    catch(IOException e)
-    {
-      clientUI.display
-        ("Could not send message to server.  Terminating client.");
-      quit();
-    }
+	if(message.length() != 0) {
+		try
+	    {
+			if(message.charAt(0) == '#') {
+				if(message.equals("#quit")) {
+					quit();
+				} else if (message.equals("#logoff")) {
+					logOff();
+				} else if(message.equals("#login")) {
+					if(isConnected()) {
+						clientUI.display("You cannot login while still being connected to a server.");
+					} else {
+						openConnection();
+					}
+				} else if(message.startsWith("#sethost")){
+					if(isConnected()) {
+						clientUI.display("You cannot change host while still being connected to a server.");
+					} else {
+						clientUI.display("Host set to: "+message.substring(9).trim());
+						setHost(message.substring(9).trim());
+					}
+				} else if(message.startsWith("#setport")) {
+					if(isConnected()) {
+						clientUI.display("You cannot change port while still being connected to a server.");
+					} else {
+						try {
+							clientUI.display("Port set to: "+message.substring(9).trim());
+							setPort(Integer.parseInt(message.substring(9).trim()));
+						} catch (Exception e) {
+							clientUI.display("Please enter a valid port number.");
+						}
+					}
+				} else if(message.equals("#gethost")) {
+					clientUI.display(getHost());
+				} else if(message.equals("#getport")) {
+					clientUI.display(String.valueOf(getPort()));
+				} else {
+					clientUI.display("Please enter a valid command.\n"
+							+ "#quit #logoff #login #gethost #getport \n"
+							+ "#sethost <host> #setport <port>");
+				}
+			} else {
+				sendToServer(message);
+			}
+	    }
+	    catch(IOException e)
+	    {
+	      clientUI.display
+	        ("Could not send message to server.  Terminating client.");
+	      quit();
+	    }
+	}
+	
   }
   
   /**
@@ -85,10 +130,49 @@ public class ChatClient extends AbstractClient
   {
     try
     {
+      sendToServer("#disconnecting");
       closeConnection();
     }
     catch(IOException e) {}
     System.exit(0);
   }
+  
+  @Override
+  protected void connectionClosed() {
+	  clientUI.display("Connection closed.");
+  }
+  
+  @Override
+  protected void connectionException(Exception exception) {
+	  clientUI.display("SERVER SHUTTING DOWN! DISCONNECTING!");
+	  clientUI.display("Abnormal termination of connection.");
+	  quit();
+  }
+  
+  @Override
+  protected void connectionEstablished() {
+	  try {
+		  sendToServer("#login "+_loginID);
+	  } catch (IOException e) {}
+  }
+  
+  private void logOff() {
+	  try
+	    {
+		  sendToServer("#disconnecting");
+	      closeConnection();
+	    }
+	    catch(IOException e) {}
+  }
+  
+  public String getLoginID() {
+	  return _loginID;
+  }
+  
+  public void setLoginID(String loginID) {
+	  _loginID = loginID;
+  }
+
+  
 }
 //End of ChatClient class
